@@ -5,6 +5,9 @@ import sys
 import requests
 import json
 
+e1 = []
+e2 = []
+e3 = []
 dep_dic={
    "AE": "Aerospace Engineering",
    "AG": "Agricultural & Food Engineering",
@@ -48,7 +51,7 @@ dep_dic={
    "SM": "Vinod Gupta School of Management"
 }
 
-def get_syllabus(subject_code,subject_name):
+def get_syllabus(subject_code):
     pdf_file_name = "{0}.pdf".format(subject_code)
     text_file_name= "{0}.txt".format(subject_code)
 
@@ -65,9 +68,8 @@ def get_syllabus(subject_code,subject_name):
                 response=requests.post(url,data)
                 break
             except Exception, e:
-                print(subject_code,t,e.message)
-                exit()
-                t=t*2
+                e3.append(subject_code)
+                print(subject_code,e.message)
                 continue
         if(response.status_code !=200 or response.apparent_encoding=='ascii'): #when file is not available, we get html response
             #print(response.status_code)
@@ -82,14 +84,16 @@ def get_syllabus(subject_code,subject_name):
         content = content_file.read()
         try:
             m=re.search('LTP- (.*?),CRD- (.)(.*?)SYLLABUS :(.*?)(\s*)\Z',content,re.DOTALL)
+            n=re.search('SUBJECT NAME- (.*)',content)
             dic={}
             dic['LTP']=m.group(1)
             dic['Credits']=m.group(2)
             dic['Syllabus']=m.group(4)
             dic['Department']=dep_dic[subject_code[:2]]
-            dic['Name']=subject_name
+            dic['Name']=n.group(1)
             dic['Code']=subject_code
         except Exception, e:
+            e1.append(subject_code)
             print(subject_code,e.message)
             return
         #print(dic)
@@ -97,20 +101,26 @@ def get_syllabus(subject_code,subject_name):
 
 if __name__ == '__main__':
     courses=[]
+    cprime = {}
+    i = 1
     with open("subjects.json",'r') as subject_file:
-        subjects_dic=json.load(subject_file)
-        for code in subjects_dic:
-            print(code)
-            res=get_syllabus(code,subjects_dic[code][0])
+        subjects=json.load(subject_file)
+        for code in subjects:
+            print(i,code)
+            res=get_syllabus(code)
             if(res):
                 print("success",code)
+                cprime[code] = res
                 courses.append(res)
             else:
+                e2.append(code)
                 print("fail",code)
+            i= i+1
 
     with open("syllabus.json","w") as result_file:
         json.dump(courses,result_file)
-
+    with open("syllabus_dic.json","w") as result_file2:
+        json.dump(cprime,result_file2)
 
     print(sys.argv)
     if(len(sys.argv)>1):
